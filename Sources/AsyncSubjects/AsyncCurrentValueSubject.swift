@@ -1,6 +1,6 @@
 //
 //  AsyncCurrentValueSubject.swift
-//  
+//
 //
 //  Created by Thibault Wittemberg on 07/01/2022.
 //
@@ -10,7 +10,7 @@
 /// The current value is replayed in any new async for in loops.
 /// When the `AsyncCurrentValueSubject` is terminated, new consumers will
 /// immediately resume with this termination.
-/// 
+///
 /// ```
 /// let currentValue = AsyncCurrentValueSubject<Int>(1)
 ///
@@ -91,8 +91,8 @@ public final class AsyncCurrentValueSubject<Element>: AsyncSubject where Element
   func handleNewConsumer() -> (iterator: AsyncBufferedChannel<Element>.Iterator, unregister: @Sendable () -> Void) {
     let asyncBufferedChannel = AsyncBufferedChannel<Element>()
 
-    let (terminalState, current) = self.state.withCriticalRegion { state -> (Termination?, Element) in
-      (state.terminalState, state.current)
+    let terminalState = self.state.withCriticalRegion { state -> Termination? in
+      state.terminalState
     }
 
     if let terminalState = terminalState, terminalState.isFinished {
@@ -100,11 +100,10 @@ public final class AsyncCurrentValueSubject<Element>: AsyncSubject where Element
       return (asyncBufferedChannel.makeAsyncIterator(), {})
     }
 
-    asyncBufferedChannel.send(current)
-
     let consumerId = self.state.withCriticalRegion { state -> Int in
       state.ids += 1
       state.channels[state.ids] = asyncBufferedChannel
+      asyncBufferedChannel.send(state.current)
       return state.ids
     }
 
